@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block title %}No Apartment Assigned{% endblock %}
+
+{% block content %}
+<div class="bg-white p-6 rounded-lg shadow-md text-center">
+    <h2 class="text-2xl font-semibold mb-4 text-red-600">Apartment ID Missing!</h2>
+    <p class="text-gray-700 mb-4">It looks like your account does not have an apartment ID assigned. Please contact Columbia Housing staff to get your apartment ID linked to your account.</p>
+    <p class="text-gray-600">Once your apartment ID is set, you will be able to access the dashboard and use RoomSync Solutions.</p>
+    <a href="{% url 'account_logout' %}" class="mt-6 inline-block bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:shadow-outline transition duration-200">Logout</a>
+</div>
+{% endblock %}

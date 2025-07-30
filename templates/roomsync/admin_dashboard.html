@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="bg-white p-6 rounded-lg shadow-md">
+    <h2 class="text-2xl font-semibold mb-4 text-gray-800">Columbia Housing Admin Dashboard</h2>
+
+    <div class="mb-6">
+        <h3 class="text-xl font-medium mb-3 text-gray-700">All Apartments</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {% for apartment in all_apartments %}
+                <div class="bg-gray-100 p-4 rounded-md border border-gray-200">
+                    <p class="font-semibold text-gray-800">Apartment ID: {{ apartment.apartment_id }}</p>
+                    <!-- You might add more details here, like number of users -->
+                </div>
+            {% empty %}
+                <p class="text-gray-600">No apartments registered yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div>
+        <h3 class="text-xl font-medium mb-3 text-gray-700">All Scheduled Slots</h3>
+        {% if all_schedules %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white border border-gray-200 rounded-lg">
+                    <thead>
+                        <tr class="bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            <th class="py-3 px-4 border-b">Apartment</th>
+                            <th class="py-3 px-4 border-b">User Email</th>
+                            <th class="py-3 px-4 border-b">Slot Type</th>
+                            <th class="py-3 px-4 border-b">Start Time</th>
+                            <th class="py-3 px-4 border-b">End Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for slot in all_schedules %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="py-3 px-4 border-b text-sm text-gray-700">{{ slot.apartment.apartment_id }}</td>
+                                <td class="py-3 px-4 border-b text-sm text-gray-700">{{ slot.user.email }}</td>
+                                <td class="py-3 px-4 border-b text-sm text-gray-700">{{ slot.get_slot_type_display }}</td>
+                                <td class="py-3 px-4 border-b text-sm text-gray-700">{{ slot.start_time|date:"F d, Y H:i" }}</td>
+                                <td class="py-3 px-4 border-b text-sm text-gray-700">{{ slot.end_time|date:"H:i" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-gray-600">No schedule slots booked across all apartments yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

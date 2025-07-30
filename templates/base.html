@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoomSync Solutions - {% block title %}{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+    <nav class="bg-blue-600 p-4 text-white shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="{% url 'dashboard' %}" class="text-2xl font-bold rounded-md px-2 py-1 hover:bg-blue-700 transition duration-200">RoomSync Solutions</a>
+            <div>
+                {% if user.is_authenticated %}
+                    <span class="mr-4">Welcome, {{ user.email }} ({{ user.apartment_id }})</span>
+                    {% if user.apartment_id == 'admin' %}
+                        <a href="{% url 'admin_dashboard' %}" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded-md shadow-sm transition duration-200">Admin Dashboard</a>
+                    {% endif %}
+                    <a href="{% url 'account_logout' %}" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md shadow-sm transition duration-200 ml-2">Logout</a>
+                {% else %}
+                    <a href="{% url 'account_login' %}" class="bg-blue-700 hover:bg-blue-800 text-white font-bold py-2 px-4 rounded-md shadow-sm transition duration-200">Login</a>
+                    <a href="{% url 'account_signup' %}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md shadow-sm transition duration-200 ml-2">Register</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow container mx-auto p-6">
+        {% if messages %}
+            <div class="mb-4">
+                {% for message in messages %}
+                    <div class="p-3 rounded-md {% if message.tags == 'success' %}bg-green-100 text-green-800{% elif message.tags == 'error' %}bg-red-100 text-red-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <footer class="bg-gray-800 text-white p-4 text-center mt-auto">
+        <div class="container mx-auto">
+            &copy; 2025 RoomSync Solutions. All rights reserved.
+        </div>
+    </footer>
+    {% block extra_js %}
+
+    {% endblock extra_js %}
+</body>
+</html>

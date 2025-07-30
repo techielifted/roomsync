@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-2xl font-semibold mb-4 text-gray-800">Your Apartment Schedule ({{ apartment_id }})</h2>
+
+        <form id="bookSlotForm" class="mb-6 p-4 border border-gray-200 rounded-md bg-gray-50">
+            {% csrf_token %}
+            <h3 class="text-xl font-medium mb-3 text-gray-700">Book a Slot</h3>
+            <div class="mb-4">
+                <label for="slot_type" class="block text-gray-700 text-sm font-bold mb-2">Slot Type:</label>
+                <select id="slot_type" name="slot_type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    <option value="bathroom">Bathroom (15 min)</option>
+                    <option value="kitchen">Kitchen (1 hour)</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="start_time" class="block text-gray-700 text-sm font-bold mb-2">Start Time:</label>
+                <input type="datetime-local" id="start_time" name="start_time" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" required>
+            </div>
+            <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:shadow-outline transition duration-200">Book Slot</button>
+            <div id="bookingMessage" class="mt-3 text-sm font-medium"></div>
+        </form>
+
+        <h3 class="text-xl font-medium mb-3 text-gray-700">Today's Bookings</h3>
+        <div id="scheduleList" class="space-y-3">
+            {% if schedules %}
+                {% for slot in schedules %}
+                    <div class="p-3 bg-blue-50 rounded-md border border-blue-200">
+                        <p class="text-sm text-gray-600">{{ slot.start_time|date:"F d, Y H:i" }} - {{ slot.end_time|date:"H:i" }}</p>
+                        <p class="font-semibold text-blue-800">{{ slot.get_slot_type_display }} by {{ slot.user.email }}</p>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-gray-600">No bookings for today yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-lg shadow-md flex flex-col h-[600px]">
+        <h2 class="text-2xl font-semibold mb-4 text-gray-800">Group Chat ({{ apartment_id }})</h2>
+        <div id="chatBox" class="flex-grow border border-gray-200 rounded-md p-4 mb-4 overflow-y-auto bg-gray-50">
+            {% if chat_messages %}
+                {% for message in chat_messages %}
+                    <div class="mb-2 {% if message.user.email == current_user_email %}text-right{% endif %}">
+                        <span class="text-xs text-gray-500">{{ message.timestamp|date:"H:i" }} </span>
+                        <span class="font-semibold {% if message.user.email == current_user_email %}text-blue-600{% else %}text-green-600{% endif %}">{{ message.user.email }}:</span>
+                        <p class="inline-block p-2 rounded-lg {% if message.user.email == current_user_email %}bg-blue-100{% else %}bg-gray-200{% endif %} max-w-[80%]">{{ message.message }}</p>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-gray-600">No messages yet. Start the conversation!</p>
+            {% endif %}
+        </div>
+        <div class="flex">
+            <input type="text" id="chatMessageInput" class="flex-grow shadow appearance-none border rounded-l w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Type your message...">
+            <button id="sendChatButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-r-md focus:outline-none focus:shadow-outline transition duration-200">Send</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    console.log("Script starting..."); // Line 1
+
+    // Get CSRF token for AJAX requests
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.startsWith(name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken');
+    console.log("CSRF token obtained:", csrftoken); // Line 2
+
+    // --- Scheduling Logic ---
+    const bookSlotForm = document.getElementById('bookSlotForm');
+    console.log("bookSlotForm element:", bookSlotForm); // Line 3
+    const bookingMessage = document.getElementById('bookingMessage');
+    const scheduleList = document.getElementById('scheduleList'); // This element is not strictly needed for this JS, but fine to keep
+
+    if (bookSlotForm) { // Only add listener if element exists
+        bookSlotForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            console.log("Book Slot form submitted!"); // Line 4 - should only show on submit
+            const formData = new FormData(bookSlotForm);
+            
+            bookingMessage.textContent = 'Booking...';
+            bookingMessage.className = 'mt-3 text-sm font-medium text-gray-600';
+
+            try {
+                const response = await fetch('/book_slot/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken,
+                    },
+                    body: formData,
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    bookingMessage.textContent = data.message;
+                    bookingMessage.className = 'mt-3 text-sm font-medium text-green-600';
+                    location.reload(); // Simple reload for MVP to see new schedule
+                } else {
+                    bookingMessage.textContent = data.message || 'An error occurred.';
+                    bookingMessage.className = 'mt-3 text-sm font-medium text-red-600';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                bookingMessage.textContent = 'Network error. Please try again.';
+                bookingMessage.className = 'mt-3 text-sm font-medium text-red-600';
+            }
+        });
+    } else {
+        console.error("Error: bookSlotForm element not found!"); // This will be red if it's the problem
+    }
+
+
+    // --- Chat Logic (WebSockets) ---
+    const chatBox = document.getElementById('chatBox');
+    console.log("chatBox element:", chatBox); // Line 5
+    const chatMessageInput = document.getElementById('chatMessageInput');
+    const sendChatButton = document.getElementById('sendChatButton');
+    const currentUserEmail = "{{ current_user_email }}"; // Passed from Django context
+    console.log("currentUserEmail:", currentUserEmail); // Line 6
+
+    // Determine WebSocket protocol (ws or wss)
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    console.log("Attempting WebSocket connection to:", wsProtocol + window.location.host + '/ws/chat/'); // Line 7
+    const chatSocket = new WebSocket(
+        wsProtocol + window.location.host + '/ws/chat/'
+    );
+    console.log("WebSocket object created:", chatSocket); // Line 8
+
+    chatSocket.onmessage = function(e) {
+        console.log("Chat message received:", e.data); // Line 9 - only on message receive
+        const data = JSON.parse(e.data);
+        const message = data.message;
+        const userEmail = data.user_email;
+        const timestamp = new Date(data.timestamp); // Parse ISO string to Date object
+
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('mb-2');
+        if (userEmail === currentUserEmail) {
+            messageDiv.classList.add('text-right');
+        }
+
+        const timeSpan = document.createElement('span');
+        timeSpan.classList.add('text-xs', 'text-gray-500');
+        timeSpan.textContent = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ';
+
+        const userSpan = document.createElement('span');
+        userSpan.classList.add('font-semibold');
+        if (userEmail === currentUserEmail) {
+            userSpan.classList.add('text-blue-600');
+        } else {
+            userSpan.classList.add('text-green-600');
+        }
+        userSpan.textContent = userEmail + ':';
+
+        const messageP = document.createElement('p');
+        messageP.classList.add('inline-block', 'p-2', 'rounded-lg', 'max-w-[80%]');
+        if (userEmail === currentUserEmail) {
+            messageP.classList.add('bg-blue-100');
+        } else {
+            messageP.classList.add('bg-gray-200');
+        }
+        messageP.textContent = message;
+
+        messageDiv.appendChild(timeSpan);
+        messageDiv.appendChild(userSpan);
+        messageDiv.appendChild(messageP);
+        
+        chatBox.appendChild(messageDiv);
+        chatBox.scrollTop = chatBox.scrollHeight; // Auto-scroll to bottom
+    };
+
+    chatSocket.onclose = function(e) {
+        console.error('Chat socket closed unexpectedly', e); // Line 10 - only on close
+    };
+
+    if (sendChatButton) { // Only add listener if element exists
+        sendChatButton.onclick = function(e) {
+            console.log("Send Chat button clicked!"); // Line 11 - only on click
+            const message = chatMessageInput.value;
+            if (message.trim() === '') return; // Don't send empty messages
+            chatSocket.send(JSON.stringify({
+                'message': message
+            }));
+            chatMessageInput.value = ''; // Clear input
+        };
+    } else {
+        console.error("Error: sendChatButton element not found!"); // This will be red if it's the problem
+    }
+
+    if (chatMessageInput) { // Only add listener if element exists
+        chatMessageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                console.log("Enter key pressed in chat input!"); // Line 12 - only on keypress
+                sendChatButton.click();
+            }
+        });
+    } else {
+        console.error("Error: chatMessageInput element not found!"); // This will be red if it's the problem
+    }
+
+
+    // Initial scroll to bottom for chat history
+    if (chatBox) {
+        chatBox.scrollTop = chatBox.scrollHeight;
+        console.log("Chat box scrolled to bottom."); // Line 13
+    } else {
+        console.error("Error: chatBox not found for scrolling.");
+    }
+
+    console.log("Script finished initialization."); // Line 14
+
+</script>
+{% endblock %}
